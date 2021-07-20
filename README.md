@@ -25,3 +25,10 @@ You need to have two projects, the first in **Unity 2018**, the other in **Unity
     - 2.4) Click on the three dots on the top right of the component and select *Haï Cloth Transfer*.
     - 2.5) In the *Cloth Transfer* window, select the copied asset in the *Data* field.
     - 2.6) In the *Cloth Transfer* window, click on *Load cloth data* button.
+
+## Additional notes
+
+- *Cloth Transfer* uses the exact vertex positions to transfer weights. You must use the same mesh, with mesh compression setting set to *Off*.
+- *Cloth Transfer* only copies the cloth constraints. It does not copy the other data of the cloth component itself.
+- Transferring from Unity 2019 back to Unity 2018 is possible by expanding the *Other* section at the bottom of the *Cloth Transfer* window.
+  By default, *Cloth Transfer* will suggest saving data in an Unity 2018 project, and loading data in a Unity 2019 project or above. 
