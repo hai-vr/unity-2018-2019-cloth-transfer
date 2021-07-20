@@ -24,4 +24,4 @@ You need to have two projects, the first in **Unity 2018**, the other in **Unity
     - 2.3) Select your *Cloth* component.
     - 2.4) Click on the three dots on the top right of the component and select *Haï Cloth Transfer*.
     - 2.5) In the *Cloth Transfer* window, select the copied asset in the *Data* field.
-    - 2.6) In the *Cloth Transfer* window, click on *Load cloth data* button, and choose a location to save the asset.
+    - 2.6) In the *Cloth Transfer* window, click on *Load cloth data* button.
