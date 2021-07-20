@@ -16,6 +16,7 @@ You need to have two projects, the first in **Unity 2018**, the other in **Unity
   - 1.1) Install *Cloth Transfer*.
   - 1.2) Select your *Cloth* component.
   - 1.3) Click on the cog on the top right of the component and select *Haï Cloth Transfer*.
+![](https://github.com/hai-vr/unity-2018-2019-cloth-transfer/raw/z-res-pictures/Documentation/ct1.png)
   - 1.4) In the *Cloth Transfer* window, click *Save cloth data* button, and choose a location to save the asset.
 
 - 2) Then, in **Unity 2019**:
@@ -23,6 +24,7 @@ You need to have two projects, the first in **Unity 2018**, the other in **Unity
     - 2.2) Copy the asset that you saved earlier from **Unity 2018** to **Unity 2019** (in step 1.4)
     - 2.3) Select your *Cloth* component.
     - 2.4) Click on the three dots on the top right of the component and select *Haï Cloth Transfer*.
+![](https://github.com/hai-vr/unity-2018-2019-cloth-transfer/raw/z-res-pictures/Documentation/ct2.png)
     - 2.5) In the *Cloth Transfer* window, select the copied asset in the *Data* field.
     - 2.6) In the *Cloth Transfer* window, click on *Load cloth data* button.
 
