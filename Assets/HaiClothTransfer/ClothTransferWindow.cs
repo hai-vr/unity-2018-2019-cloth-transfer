@@ -23,6 +23,7 @@
 //
 // For more information, please refer to <https://unlicense.org>
 
+#if UNITY_EDITOR
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -183,3 +184,4 @@ namespace HaiClothTransfer
         }
     }
 }
+#endif
