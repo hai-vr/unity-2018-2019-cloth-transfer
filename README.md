@@ -2,6 +2,8 @@
 
 ### [> Download latest version...](https://github.com/hai-vr/unity-2018-2019-cloth-transfer/releases)
 
+### [> GitHubでのダウンロード](https://github.com/hai-vr/unity-2018-2019-cloth-transfer/releases) / [> Boothでの無料ダウンロード (日本語訳とビデオチュートリアル)](https://booth.pm/en/items/3136328)
+
 *Cloth Transfer* is a Unity Editor tool that lets you transfer cloth constraints of a mesh from a Unity 2018 project into a Unity 2019 project.
 
 It was created mainly to assist migration from Unity 2018 to Unity 2019 in the VRChat social platform.
