@@ -32,9 +32,11 @@ You need to have two projects, the first in **Unity 2018**, the other in **Unity
 
 ## Additional notes
 
-*Cloth Transfer* was built specifically to handle cloth constraint migration between Unity 2018 and Unity 2019. **It assumes the mesh is identical.** If you want to update the mesh data itself after migrating, you can use another tool like [CopyComponentsByRegex by Taremin](https://github.com/Taremin/CopyComponentsByRegex).
+*Cloth Transfer* was built specifically to handle cloth constraint migration between Unity 2018 and Unity 2019. **It assumes the mesh is identical.** If you want to update the mesh data itself after migrating, *Cloth Transfer* might work using the *Allow inexact* option; otherwise you can use another tool like [CopyComponentsByRegex by Taremin](https://github.com/Taremin/CopyComponentsByRegex).
 
 - *Cloth Transfer* uses the exact vertex positions to transfer weights. You must use the same mesh, with mesh compression setting set to *Off*.
+  - Despite this, if the vertex positions end up being different, you can choose to tick the *Allow inexact* checkbox as a last resort. It will copy the data of the closest vertex whenever it cannot find an exact vertex.
+  - When using *Allow inexact*, please check that you are copying the data of the correct cloth, and not the data of another cloth by accident!
 - *Cloth Transfer* only copies the cloth constraints. It does not copy the other data of the cloth component itself.
 - Transferring from Unity 2019 back to Unity 2018 is possible by expanding the *Other* section at the bottom of the *Cloth Transfer* window.
   By default, *Cloth Transfer* will suggest saving data in an Unity 2018 project, and loading data in a Unity 2019 project or above. 
