@@ -26,6 +26,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -36,6 +37,8 @@ namespace HaiClothTransfer
         private Cloth cloth;
         private ClothTransferData clothTransferData;
         private bool foldout;
+        private bool optInApproximate;
+        private InjectionExecutionPath algorithmExecutionPath = InjectionExecutionPath.NotExecuted;
 
         private const string CtLoadClothData = "Load cloth data / Clothの修正";
         private const string CtSaveClothData = "Save cloth data / Clothの保存";
@@ -43,6 +46,11 @@ namespace HaiClothTransfer
         private const string CtData = "Data / 修正";
         private const string CtOther = "Other / その他";
         private const string CtCloth = "Cloth";
+        private const string CtOptInApproximateEn = "Allow inexact";
+        private const string CtOptInApproximateJp = "寛容さ";
+        private const string CtOptInApproximate = CtOptInApproximateEn + " / " + CtOptInApproximateJp;
+        private const string CtNearestNeighbor = "Some vertices were approximated because their positions did not match. Please check that you are importing the correct data for this mesh.\n\n頂点の位置が一致しないため、一部の頂点を近似しています。このメッシュに対して正しいデータをインポートしているか確認してください。";
+        private const string CtMissed = "Some vertices were not resolved. Please check that you are importing the correct data for this mesh.\nIf necessary, enable \"" + CtOptInApproximateEn + "\".\n\nいくつかの頂点が見つかりませんでした。このメッシュに対して正しいデータをインポートしているか確認してください。\n必要に応じて「" + CtOptInApproximateJp + "」を有効にする。";
 
         private void OnEnable()
         {
@@ -66,7 +74,7 @@ namespace HaiClothTransfer
 
         private void LayoutForSave()
         {
-            EditorGUILayout.LabelField(CtSaveClothData);
+            EditorGUILayout.LabelField(CtSaveClothData, EditorStyles.boldLabel);
             cloth = (Cloth) EditorGUILayout.ObjectField(CtCloth, cloth, typeof(Cloth), true);
 
             EditorGUI.BeginDisabledGroup(cloth == null);
@@ -79,16 +87,29 @@ namespace HaiClothTransfer
 
         private void LayoutForLoad()
         {
-            EditorGUILayout.LabelField(CtLoadClothData);
+            EditorGUILayout.LabelField(CtLoadClothData, EditorStyles.boldLabel);
             cloth = (Cloth) EditorGUILayout.ObjectField(CtClothToModify, cloth, typeof(Cloth), true);
             clothTransferData = (ClothTransferData) EditorGUILayout.ObjectField(CtData, clothTransferData, typeof(ClothTransferData), true);
-
+            optInApproximate = EditorGUILayout.Toggle(CtOptInApproximate, optInApproximate);
             EditorGUI.BeginDisabledGroup(cloth == null || clothTransferData == null);
             if (GUILayout.Button(CtLoadClothData))
             {
-                LoadClothData();
+                algorithmExecutionPath = LoadClothData();
             }
             EditorGUI.EndDisabledGroup();
+            switch (algorithmExecutionPath)
+            {
+                case InjectionExecutionPath.NearestNeighbor:
+                    EditorGUILayout.HelpBox(CtNearestNeighbor, MessageType.Warning);
+                    break;
+                case InjectionExecutionPath.Missed:
+                    EditorGUILayout.HelpBox(CtMissed, MessageType.Warning);
+                    break;
+                case InjectionExecutionPath.NotExecuted:
+                case InjectionExecutionPath.Perfect:
+                default:
+                    break;
+            }
         }
 
         private void SaveClothData()
@@ -125,7 +146,7 @@ namespace HaiClothTransfer
             return transferCoefficients;
         }
 
-        private void LoadClothData()
+        private InjectionExecutionPath LoadClothData()
         {
             Undo.RecordObject(cloth, CtLoadClothData);
             var vertexToCoefficient = new Dictionary<Vector3, ClothTransferCoefficient>();
@@ -135,30 +156,78 @@ namespace HaiClothTransfer
             }
 
             var coefficients = cloth.coefficients; // Preserve the array size of coefficients, regardless of the array size of vertices. See ValidCoefficientCount().
-            InjectCoefficients(coefficients, vertexToCoefficient);
+            var injectionExecutionPath = InjectCoefficients(coefficients, vertexToCoefficient);
             cloth.coefficients = coefficients;
+
+            return injectionExecutionPath;
         }
 
-        private void InjectCoefficients(ClothSkinningCoefficient[] mutatedCoefficients, Dictionary<Vector3, ClothTransferCoefficient> vertexToCoefficient)
+        private InjectionExecutionPath InjectCoefficients(ClothSkinningCoefficient[] mutatedCoefficients, Dictionary<Vector3, ClothTransferCoefficient> vertexToCoefficient)
         {
+            var injectionExecutionPath = InjectionExecutionPath.Perfect;
             var validCoefficientCount = ValidCoefficientCount();
             for (var index = 0; index < validCoefficientCount; index++)
             {
                 var vertex = cloth.vertices[index];
                 var found = vertexToCoefficient.TryGetValue(vertex, out var clothTransferCoefficient);
-                if (found)
+                if (!found)
                 {
-                    mutatedCoefficients[index] = new ClothSkinningCoefficient
+                    if (optInApproximate)
                     {
-                        maxDistance = clothTransferCoefficient.maxDistance,
-                        collisionSphereDistance = clothTransferCoefficient.collisionSphereDistance
-                    };
+                        injectionExecutionPath = InjectionExecutionPath.NearestNeighbor;
+                        clothTransferCoefficient = NaiveFindNearestNeighbor(vertex, vertexToCoefficient);
+                    }
+                    else
+                    {
+                        injectionExecutionPath = InjectionExecutionPath.Missed;
+                        clothTransferCoefficient = new ClothTransferCoefficient();
+                    }
                 }
-                else
+
+                mutatedCoefficients[index] = new ClothSkinningCoefficient
                 {
-                    mutatedCoefficients[index] = new ClothSkinningCoefficient();
-                }
+                    maxDistance = clothTransferCoefficient.maxDistance,
+                    collisionSphereDistance = clothTransferCoefficient.collisionSphereDistance
+                };
             }
+
+            return injectionExecutionPath;
+        }
+
+        private enum InjectionExecutionPath
+        {
+            NotExecuted, Perfect, NearestNeighbor, Missed
+        }
+
+        private ClothTransferCoefficient NaiveFindNearestNeighbor(Vector3 vertex, Dictionary<Vector3, ClothTransferCoefficient> vertexToCoefficient)
+        {
+            // This is a naive nearest neighbor implementation.
+            // A k-d tree may be much more efficient, however it implies importing a library or implementing it,
+            // which is bloating and causes packaging concerns due to licensing (this project uses public domain/Unlicense).
+            // Given the size of the problem (usually less than 1000 vertices) and its expected use (one shot during migration),
+            // I find it acceptable and the execution time should be barely noticeable in the general case.
+            return vertexToCoefficient.Values
+                .Select(coefficient => new NaiveDistanceCoefficient
+                {
+                    distanceSquared = DistanceSquared(vertex, coefficient.vertex),
+                    coefficient = coefficient
+                })
+                .Aggregate((a, b) => a.distanceSquared < b.distanceSquared ? a : b)
+                .coefficient;
+        }
+
+        private struct NaiveDistanceCoefficient
+        {
+            public double distanceSquared;
+            public ClothTransferCoefficient coefficient;
+        }
+
+        private static double DistanceSquared(Vector3 a, Vector3 b)
+        {
+            var x = a.x - b.x;
+            var y = a.y - b.y;
+            var z = a.z - b.z;
+            return x * x + y * y + z * z;
         }
 
         private int ValidCoefficientCount()
