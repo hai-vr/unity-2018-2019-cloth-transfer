@@ -24,6 +24,7 @@
 // For more information, please refer to <https://unlicense.org>
 
 #if UNITY_EDITOR
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -108,8 +109,9 @@ namespace HaiClothTransfer
 
         private ClothTransferCoefficient[] ExtractCoefficients()
         {
-            var transferCoefficients = new ClothTransferCoefficient[cloth.coefficients.Length];
-            for (var index = 0; index < cloth.coefficients.Length; index++)
+            var validCoefficientCount = ValidCoefficientCount();
+            var transferCoefficients = new ClothTransferCoefficient[validCoefficientCount];
+            for (var index = 0; index < validCoefficientCount; index++)
             {
                 var coefficient = cloth.coefficients[index];
                 transferCoefficients[index] = new ClothTransferCoefficient
@@ -132,14 +134,15 @@ namespace HaiClothTransfer
                 vertexToCoefficient[clothTransferCoefficient.vertex] = clothTransferCoefficient;
             }
 
-            var coefficients = cloth.coefficients;
+            var coefficients = cloth.coefficients; // Preserve the array size of coefficients, regardless of the array size of vertices. See ValidCoefficientCount().
             InjectCoefficients(coefficients, vertexToCoefficient);
             cloth.coefficients = coefficients;
         }
 
         private void InjectCoefficients(ClothSkinningCoefficient[] mutatedCoefficients, Dictionary<Vector3, ClothTransferCoefficient> vertexToCoefficient)
         {
-            for (var index = 0; index < cloth.coefficients.Length; index++)
+            var validCoefficientCount = ValidCoefficientCount();
+            for (var index = 0; index < validCoefficientCount; index++)
             {
                 var vertex = cloth.vertices[index];
                 var found = vertexToCoefficient.TryGetValue(vertex, out var clothTransferCoefficient);
@@ -156,6 +159,13 @@ namespace HaiClothTransfer
                     mutatedCoefficients[index] = new ClothSkinningCoefficient();
                 }
             }
+        }
+
+        private int ValidCoefficientCount()
+        {
+            // https://github.com/hai-vr/unity-2018-2019-cloth-transfer/issues/3
+            // Sometimes the number of cloth vertices is lower than the number of cloth coefficients
+            return Math.Min(cloth.coefficients.Length, cloth.vertices.Length);
         }
 
         [MenuItem("Window/Haï/Cloth Transfer")]
