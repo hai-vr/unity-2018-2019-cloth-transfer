@@ -26,7 +26,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using HaiClothTransfer.HctPartialKdTreeLib;
 using UnityEditor;
 using UnityEngine;
 
@@ -166,6 +166,8 @@ namespace HaiClothTransfer
         {
             var injectionExecutionPath = InjectionExecutionPath.Perfect;
             var validCoefficientCount = ValidCoefficientCount();
+            KdVector3Tree<ClothTransferCoefficient> kdTreeNullable = null;
+
             for (var index = 0; index < validCoefficientCount; index++)
             {
                 var vertex = cloth.vertices[index];
@@ -174,8 +176,12 @@ namespace HaiClothTransfer
                 {
                     if (optInApproximate)
                     {
+                        if (kdTreeNullable == null)
+                        {
+                            kdTreeNullable = InitializeKdTree(vertexToCoefficient);
+                        }
                         injectionExecutionPath = InjectionExecutionPath.NearestNeighbor;
-                        clothTransferCoefficient = NaiveFindNearestNeighbor(vertex, vertexToCoefficient);
+                        clothTransferCoefficient = FindNearestNeighbor(vertex, kdTreeNullable);
                     }
                     else
                     {
@@ -199,35 +205,21 @@ namespace HaiClothTransfer
             NotExecuted, Perfect, NearestNeighbor, Missed
         }
 
-        private ClothTransferCoefficient NaiveFindNearestNeighbor(Vector3 vertex, Dictionary<Vector3, ClothTransferCoefficient> vertexToCoefficient)
+        private KdVector3Tree<ClothTransferCoefficient> InitializeKdTree(Dictionary<Vector3, ClothTransferCoefficient> vertexToCoefficient)
         {
-            // This is a naive nearest neighbor implementation.
-            // A k-d tree may be much more efficient, however it implies importing a library or implementing it,
-            // which is bloating and causes packaging concerns due to licensing (this project uses public domain/Unlicense).
-            // Given the size of the problem (usually less than 1000 vertices) and its expected use (one shot during migration),
-            // I find it acceptable and the execution time should be barely noticeable in the general case.
-            return vertexToCoefficient.Values
-                .Select(coefficient => new NaiveDistanceCoefficient
-                {
-                    distanceSquared = DistanceSquared(vertex, coefficient.vertex),
-                    coefficient = coefficient
-                })
-                .Aggregate((a, b) => a.distanceSquared < b.distanceSquared ? a : b)
-                .coefficient;
+            var kdTree = new KdVector3Tree<ClothTransferCoefficient>();
+            foreach (var coefficient in vertexToCoefficient)
+            {
+                kdTree.Add(coefficient.Key, coefficient.Value);
+            }
+            kdTree.Balance();
+
+            return kdTree;
         }
 
-        private struct NaiveDistanceCoefficient
+        private ClothTransferCoefficient FindNearestNeighbor(Vector3 vertex, KdVector3Tree<ClothTransferCoefficient> kdTree)
         {
-            public double distanceSquared;
-            public ClothTransferCoefficient coefficient;
-        }
-
-        private static double DistanceSquared(Vector3 a, Vector3 b)
-        {
-            var x = a.x - b.x;
-            var y = a.y - b.y;
-            var z = a.z - b.z;
-            return x * x + y * y + z * z;
+            return kdTree.GetNearestNeighbours(vertex, 1).Value;
         }
 
         private int ValidCoefficientCount()
