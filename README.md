@@ -19,6 +19,7 @@ You need to have two projects, the first in **Unity 2018**, the other in **Unity
   - 1.2) Select your *Cloth* component.
   - 1.3) Click on the cog on the top right of the component and select *Haï Cloth Transfer*.
 ![](https://github.com/hai-vr/unity-2018-2019-cloth-transfer/raw/z-res-pictures/Documentation/ct1.png)
+    - **Warning:** If you do not see this menu item, make sure your project does not have compile errors. If your project does have compile errors, **it is very important that you do NOT delete the VRChat SDK**! Use a backup of your project, or create a new Unity 2018 project and copy the minimum necessary over to proceed.
   - 1.4) In the *Cloth Transfer* window, click *Save cloth data* button, and choose a location to save the asset.
 
 - 2) Then, in **Unity 2019**:
