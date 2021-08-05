@@ -26,6 +26,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using HaiClothTransfer.HctPartialKdTreeLib;
 using UnityEditor;
 using UnityEngine;
@@ -166,6 +167,8 @@ namespace HaiClothTransfer
         {
             var injectionExecutionPath = InjectionExecutionPath.Perfect;
             var validCoefficientCount = ValidCoefficientCount();
+
+            var kdTreeHasFailedToInitialize = false;
             KdVector3Tree<ClothTransferCoefficient> kdTreeNullable = null;
 
             for (var index = 0; index < validCoefficientCount; index++)
@@ -176,12 +179,28 @@ namespace HaiClothTransfer
                 {
                     if (optInApproximate)
                     {
-                        if (kdTreeNullable == null)
+                        if (!kdTreeHasFailedToInitialize && kdTreeNullable == null)
                         {
-                            kdTreeNullable = InitializeKdTree(vertexToCoefficient);
+                            try
+                            {
+                                kdTreeNullable = InitializeKdTreeAccountingForLibraryErrors(vertexToCoefficient);
+                            }
+                            catch (Exception e)
+                            {
+                                // https://github.com/hai-vr/unity-2018-2019-cloth-transfer/issues/6
+                                // An exception of type "Index was outside the bounds of the array" may be thrown by AddNodesBalanced function
+                                // which is inside the authority of the KdTree library.
+                                // This is handled in InitializeKdTreeAccountingForLibraryErrors, but just in case KdTree has other weird errors,
+                                // catch all exceptions to fall back to naive nearest neighbor in this case.
+                                Debug.LogError("An unknown exception has occurred during KdTree initialization. We will switch to the slower distance calculation.");
+                                Debug.LogException(e);
+                                kdTreeHasFailedToInitialize = true;
+                            }
                         }
                         injectionExecutionPath = InjectionExecutionPath.NearestNeighbor;
-                        clothTransferCoefficient = FindNearestNeighbor(vertex, kdTreeNullable);
+                        clothTransferCoefficient = kdTreeHasFailedToInitialize
+                            ? NaiveFindNearestNeighbor(vertex, vertexToCoefficient)
+                            : FindNearestNeighbor(vertex, kdTreeNullable);
                     }
                     else
                     {
@@ -198,6 +217,20 @@ namespace HaiClothTransfer
             }
 
             return injectionExecutionPath;
+        }
+
+        private KdVector3Tree<ClothTransferCoefficient> InitializeKdTreeAccountingForLibraryErrors(Dictionary<Vector3, ClothTransferCoefficient> vertexToCoefficient)
+        {
+            try
+            {
+                return InitializeKdTree(vertexToCoefficient);
+            }
+            catch (IndexOutOfRangeException e)
+            {
+                Debug.LogError("A known exception has occurred during KdTree initialization. We will try to use a workaround.");
+                Debug.LogException(e);
+                return InitializeKdTreeWithoutBalancingWorkaround(vertexToCoefficient);
+            }
         }
 
         private enum InjectionExecutionPath
@@ -217,6 +250,21 @@ namespace HaiClothTransfer
             return kdTree;
         }
 
+        private KdVector3Tree<ClothTransferCoefficient> InitializeKdTreeWithoutBalancingWorkaround(Dictionary<Vector3, ClothTransferCoefficient> vertexToCoefficient)
+        {
+            // https://github.com/hai-vr/unity-2018-2019-cloth-transfer/issues/6
+            // An exception of type "Index was outside the bounds of the array" may be thrown by AddNodesBalanced function
+            // which is called by the Balance function. The Balance function is mutating, so the KdTree could be destroyed beyond repair
+            // therefore the KdTree must be recreated from scratch.
+            var kdTree = new KdVector3Tree<ClothTransferCoefficient>();
+            foreach (var coefficient in vertexToCoefficient)
+            {
+                kdTree.Add(coefficient.Key, coefficient.Value);
+            }
+
+            return kdTree;
+        }
+
         private ClothTransferCoefficient FindNearestNeighbor(Vector3 vertex, KdVector3Tree<ClothTransferCoefficient> kdTree)
         {
             return kdTree.GetNearestNeighbours(vertex, 1).Value;
@@ -227,6 +275,34 @@ namespace HaiClothTransfer
             // https://github.com/hai-vr/unity-2018-2019-cloth-transfer/issues/3
             // Sometimes the number of cloth vertices is lower than the number of cloth coefficients
             return Math.Min(cloth.coefficients.Length, cloth.vertices.Length);
+        }
+
+        private ClothTransferCoefficient NaiveFindNearestNeighbor(Vector3 vertex, Dictionary<Vector3, ClothTransferCoefficient> vertexToCoefficient)
+        {
+            // This is a naive nearest neighbor implementation.
+            // This is used as a fallback in case the KdTree library fails to initialize.
+            return vertexToCoefficient.Values
+                .Select(coefficient => new NaiveDistanceCoefficient
+                {
+                    distanceSquared = DistanceSquared(vertex, coefficient.vertex),
+                    coefficient = coefficient
+                })
+                .Aggregate((a, b) => a.distanceSquared < b.distanceSquared ? a : b)
+                .coefficient;
+        }
+
+        private struct NaiveDistanceCoefficient
+        {
+            public double distanceSquared;
+            public ClothTransferCoefficient coefficient;
+        }
+
+        private static double DistanceSquared(Vector3 a, Vector3 b)
+        {
+            var x = a.x - b.x;
+            var y = a.y - b.y;
+            var z = a.z - b.z;
+            return x * x + y * y + z * z;
         }
 
         [MenuItem("Window/Haï/Cloth Transfer")]
