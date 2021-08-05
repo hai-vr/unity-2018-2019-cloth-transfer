@@ -51,6 +51,20 @@ namespace HaiClothTransfer
         private const string CtOptInApproximate = CtOptInApproximateEn + " / " + CtOptInApproximateJp;
         private const string CtNearestNeighbor = "Some vertices were approximated because their positions did not match. Please check that you are importing the correct data for this mesh.\n\n頂点の位置が一致しないため、一部の頂点を近似しています。このメッシュに対して正しいデータをインポートしているか確認してください。";
         private const string CtMissed = "Some vertices were not resolved. Please check that you are importing the correct data for this mesh.\nIf necessary, enable \"" + CtOptInApproximateEn + "\".\n\nいくつかの頂点が見つかりませんでした。このメッシュに対して正しいデータをインポートしているか確認してください。\n必要に応じて「" + CtOptInApproximateJp + "」を有効にする。";
+        private const string CtNoVertices = @"The cloth component must be enabled and visible in the scene. Please make sure:
+- The GameObject is enabled in the hierarchy
+- The parents of the GameObject is enabled in the hierarchy
+- The cloth component is enabled in the hierarchy
+When done, put the cursor on this window again.
+
+Cloth componentが有効で、かつ表示されている必要があります。以下の点を確認してください。
+- GameObjectが階層内で有効になっている。
+- GameObjectの親が、階層内で有効になっている。
+- 階層内で、Cloth component有効になっている。
+終わったら、再びこのウィンドウにカーソルを合わせます。";
+        private const string CtNoVerticesInAsset = @"This cloth data asset is invalid and must be exported again from the original.
+
+Clothの修正は無効なので、オリジナルから再度エクスポートする必要があります。";
 
         private void OnEnable()
         {
@@ -77,7 +91,12 @@ namespace HaiClothTransfer
             EditorGUILayout.LabelField(CtSaveClothData, EditorStyles.boldLabel);
             cloth = (Cloth) EditorGUILayout.ObjectField(CtCloth, cloth, typeof(Cloth), true);
 
-            EditorGUI.BeginDisabledGroup(cloth == null);
+            if (cloth != null && (cloth.vertices == null || cloth.vertices.Length == 0))
+            {
+                EditorGUILayout.HelpBox(CtNoVertices, MessageType.Warning);
+            }
+
+            EditorGUI.BeginDisabledGroup(cloth == null || cloth.vertices == null || cloth.vertices.Length == 0);
             if (GUILayout.Button(CtSaveClothData))
             {
                 SaveClothData();
@@ -91,7 +110,20 @@ namespace HaiClothTransfer
             cloth = (Cloth) EditorGUILayout.ObjectField(CtClothToModify, cloth, typeof(Cloth), true);
             clothTransferData = (ClothTransferData) EditorGUILayout.ObjectField(CtData, clothTransferData, typeof(ClothTransferData), true);
             optInApproximate = EditorGUILayout.Toggle(CtOptInApproximate, optInApproximate);
-            EditorGUI.BeginDisabledGroup(cloth == null || clothTransferData == null);
+
+            if (cloth != null && (cloth.vertices == null || cloth.vertices.Length == 0))
+            {
+                EditorGUILayout.HelpBox(CtNoVertices, MessageType.Warning);
+            }
+            if (clothTransferData != null && (clothTransferData.coefficients == null || clothTransferData.coefficients.Length == 0))
+            {
+                EditorGUILayout.HelpBox(CtNoVerticesInAsset, MessageType.Error);
+            }
+
+            EditorGUI.BeginDisabledGroup(
+                cloth == null || cloth.vertices == null || cloth.vertices.Length == 0
+                || clothTransferData == null || clothTransferData.coefficients == null || clothTransferData.coefficients.Length == 0
+            );
             if (GUILayout.Button(CtLoadClothData))
             {
                 algorithmExecutionPath = LoadClothData();
