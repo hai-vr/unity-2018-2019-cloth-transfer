@@ -14,6 +14,8 @@ It was created mainly to assist migration from Unity 2018 to Unity 2019 in the V
 
 You need to have two projects, the first in **Unity 2018**, the other in **Unity 2019** or above.
 
+The *Cloth* component must be enabled and visible in the scene. Please make sure that the *GameObject* and its parents are enabled in the hierarchy, and that the *Cloth* component is enabled.
+
 - 1) First, in **Unity 2018**:
   - 1.1) Install *Cloth Transfer*.
   - 1.2) Select your *Cloth* component.
