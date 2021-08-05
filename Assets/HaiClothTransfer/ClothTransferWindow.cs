@@ -54,13 +54,13 @@ namespace HaiClothTransfer
         private const string CtNoVertices = @"The cloth component must be enabled and visible in the scene. Please make sure:
 - The GameObject is enabled in the hierarchy
 - The parents of the GameObject is enabled in the hierarchy
-- The cloth component is enabled in the hierarchy
+- The cloth component is enabled
 When done, put the cursor on this window again.
 
 Cloth componentが有効で、かつ表示されている必要があります。以下の点を確認してください。
 - GameObjectが階層内で有効になっている。
 - GameObjectの親が、階層内で有効になっている。
-- 階層内で、Cloth component有効になっている。
+- Cloth component有効になっている。
 終わったら、再びこのウィンドウにカーソルを合わせます。";
         private const string CtNoVerticesInAsset = @"This cloth data asset is invalid and must be exported again from the original.
 
