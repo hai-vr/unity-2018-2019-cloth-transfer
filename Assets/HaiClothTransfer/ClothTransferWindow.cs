@@ -37,7 +37,7 @@ namespace HaiClothTransfer
         private Cloth cloth;
         private ClothTransferData clothTransferData;
         private bool foldout;
-        private bool optInApproximate;
+        private bool useApproximate = true;
         private InjectionExecutionPath algorithmExecutionPath = InjectionExecutionPath.NotExecuted;
 
         private const string CtLoadClothData = "Load cloth data / Clothの修正";
@@ -46,11 +46,11 @@ namespace HaiClothTransfer
         private const string CtData = "Data / 修正";
         private const string CtOther = "Other / その他";
         private const string CtCloth = "Cloth";
-        private const string CtOptInApproximateEn = "Allow inexact";
-        private const string CtOptInApproximateJp = "寛容さ";
-        private const string CtOptInApproximate = CtOptInApproximateEn + " / " + CtOptInApproximateJp;
+        private const string CtUseApproximateEn = "Allow inexact";
+        private const string CtUseApproximateJp = "寛容さ";
+        private const string CtUseApproximate = CtUseApproximateEn + " / " + CtUseApproximateJp;
         private const string CtNearestNeighbor = "Some vertices were approximated because their positions did not match. Please check that you are importing the correct data for this mesh.\n\n頂点の位置が一致しないため、一部の頂点を近似しています。このメッシュに対して正しいデータをインポートしているか確認してください。";
-        private const string CtMissed = "Some vertices were not resolved. Please check that you are importing the correct data for this mesh.\nIf necessary, enable \"" + CtOptInApproximateEn + "\".\n\nいくつかの頂点が見つかりませんでした。このメッシュに対して正しいデータをインポートしているか確認してください。\n必要に応じて「" + CtOptInApproximateJp + "」を有効にする。";
+        private const string CtMissed = "Some vertices were not resolved. Please check that you are importing the correct data for this mesh.\nIf necessary, enable \"" + CtUseApproximateEn + "\".\n\nいくつかの頂点が見つかりませんでした。このメッシュに対して正しいデータをインポートしているか確認してください。\n必要に応じて「" + CtUseApproximateJp + "」を有効にする。";
         private const string CtNoVertices = @"The cloth component must be enabled and visible in the scene. Please make sure:
 - The GameObject is enabled in the hierarchy
 - The parents of the GameObject is enabled in the hierarchy
@@ -73,15 +73,15 @@ Clothの修正は無効なので、オリジナルから再度エクスポート
 
         private void OnGUI()
         {
-            var isUnity2018 = Application.unityVersion.StartsWith("2018");
+            var isUnity2019 = Application.unityVersion.StartsWith("2019");
 
-            if (isUnity2018) { LayoutForSave(); }
+            if (isUnity2019) { LayoutForSave(); }
             else { LayoutForLoad(); }
 
             foldout = EditorGUILayout.Foldout(foldout, CtOther);
             if (foldout)
             {
-                if (isUnity2018) { LayoutForLoad(); }
+                if (isUnity2019) { LayoutForLoad(); }
                 else { LayoutForSave(); }
             }
         }
@@ -109,7 +109,7 @@ Clothの修正は無効なので、オリジナルから再度エクスポート
             EditorGUILayout.LabelField(CtLoadClothData, EditorStyles.boldLabel);
             cloth = (Cloth) EditorGUILayout.ObjectField(CtClothToModify, cloth, typeof(Cloth), true);
             clothTransferData = (ClothTransferData) EditorGUILayout.ObjectField(CtData, clothTransferData, typeof(ClothTransferData), true);
-            optInApproximate = EditorGUILayout.Toggle(CtOptInApproximate, optInApproximate);
+            useApproximate = EditorGUILayout.Toggle(CtUseApproximate, useApproximate);
 
             if (cloth != null && (cloth.vertices == null || cloth.vertices.Length == 0))
             {
@@ -206,7 +206,7 @@ Clothの修正は無効なので、オリジナルから再度エクスポート
                 var found = vertexToCoefficient.TryGetValue(vertex, out var clothTransferCoefficient);
                 if (!found)
                 {
-                    if (optInApproximate)
+                    if (useApproximate)
                     {
                         if (kdTreeNullable == null)
                         {
